@@ -1,0 +1,9 @@
+.next
+node_modules
+reference
+.claude
+skills-lock.json
+package-lock.json
+ambient.md
+AGENTS.md
+next-env.d.ts

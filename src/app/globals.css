@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "../styles/base.css";
+@import "../styles/ui.css";
+@import "../styles/sections.css";
+
+/* ===== Design tokens (brief §7) ===== */
+@theme {
+  --color-ink: #0a0a0b;
+  --color-graphite: #141417;
+  --color-graphite-2: #1c1c21;
+  --color-line: #2a2a30;
+  --color-line-2: #1d1d21;
+  --color-gold: #c8a45d; /* [confirmar] sample exact gold from the client's logo */
+  --color-gold-hi: #e9cd8a;
+  --color-gold-lo: #8e6b2e;
+  --color-gold-dk: #6b5020;
+  --color-cream: #f4efe6;
+  --color-cream-2: #e2dacb;
+  --color-muted: #a39e94;
+  --color-muted-light: #5a5449;
+  --color-error: #f0997b;
+
+  --ease-diamond: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --radius-btn: 4px;
+  --radius-card: 12px;
+  --radius-chip: 999px;
+
+  --breakpoint-xs: 375px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+  --breakpoint-2xl: 1920px;
+}
+
+@theme inline {
+  --font-display: var(--font-archivo), "Archivo", system-ui, sans-serif;
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, serif;
+  --font-sans: var(--font-manrope), "Manrope", system-ui, sans-serif;
+}
+
+:root {
+  --pad: clamp(20px, 5vw, 72px);
+  --sec: clamp(96px, 14vh, 180px);
+  --hdr: 76px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}

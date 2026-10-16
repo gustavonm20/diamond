@@ -47,14 +47,21 @@ npm run dev                  # http://localhost:3000
 
 Sem `RESEND_API_KEY`, em desenvolvimento o pedido é apenas registrado no terminal; em produção o formulário mostra erro e sugere o WhatsApp.
 
-## Movimento, acessibilidade e o modo "reduzir movimento"
+## Movimento e acessibilidade
 
-O site respeita `prefers-reduced-motion`: com ele ativo, não há smooth scroll, as cenas fixas viram fluxo normal e tudo aparece no estado final.
+O site tem três modos de movimento, definidos antes da primeira pintura (`<html data-motion>`):
 
-**Atenção no Windows:** se _Configurações › Acessibilidade › Efeitos visuais › Efeitos de animação_ estiver **desligado**, o navegador informa "reduzir movimento" e você verá a versão estática. Para ver os efeitos:
+| Modo     | Quando                                                                                | O que muda                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`   | Padrão                                                                                | Todos os efeitos, smooth scroll (Lenis), preloader                                                                                                |
+| `soft`   | O sistema pede "reduzir movimento" (ex.: Windows com _Efeitos de animação_ desligado) | Efeitos e 3D continuam, mais calmos: rolagem nativa (sem inércia), sem piscadas na ignição, loops mais lentos, diamante a 30 fps, sem preloader   |
+| `static` | O visitante clica em **"Reduzir animações"** no rodapé, ou usa `?motion=static`       | Nada anima: tudo no estado final e as cenas fixas viram fluxo normal. A escolha fica salva; `?motion=auto` ou o botão "Ativar animações" desfazem |
 
-- ligue os efeitos de animação do Windows, **ou**
-- abra o site com **`?motion=full`** (ex.: `http://localhost:3000/?motion=full`). Vale para a sessão; `?motion=auto` volta ao padrão.
+Interações:
+
+- **Diamante do hero:** gira, flutua e recebe uma faixa de luz a cada ~5 s. Acelera com o scroll, brilha ao passar o mouse e pode ser **arrastado para girar**, com inércia. No toque, o arraste horizontal gira e o vertical continua rolando a página.
+- **Carrossel de Soluções:** coverflow 3D (profundidade real e inclinação conforme a velocidade). No desktop o trilho anda com a rolagem e também com **clique e arraste do mouse**, encaixando no card mais próximo. Em telas menores é um carrossel nativo com arraste do mouse, inércia e encaixe.
+- **Header:** sempre fixo. Ao rolar, fica sólido e compacta (76 → 60 px).
 
 Outros cuidados: foco dourado visível, skip link, accordion/menus/lightbox/formulário navegáveis por teclado, chips com `aria-pressed`, textos alternativos e `sr-only` nos números animados.
 
@@ -70,7 +77,7 @@ src/
     forms/        LeadForm em 3 etapas
   content/        TODA a copy e os dados (services, segments, cases, portfolio, stats, faq, …)
   lib/            gsap, motion (fórmulas de progresso), scroll, whatsapp, analytics, schema, seo, utm
-  hooks/          useReducedMotion, useIsDesktop, useDockVisibility
+  hooks/          useMotionMode, useIsDesktop, useDockVisibility
   styles/         base.css, ui.css, sections.css
 ```
 
@@ -126,8 +133,10 @@ Rode `npm run check:content` para a lista atualizada. Resumo:
 
 ## Performance
 
-- O diamante 3D é WebGL puro (~80 triângulos, 1 buffer, 2 passes), com DPR limitado, pausado fora da tela e com a aba oculta. Sem WebGL, cai para o desenho em linha.
-- Efeitos escrevem estilos direto nos elementos (sem estado React por frame) e animam só `transform`, `opacity`, `clip-path`, `stroke-dashoffset` e `background-position`.
+- O diamante 3D é WebGL puro (~80 triângulos, 1 buffer, 2 passes), pausado fora da tela e com a aba oculta. A qualidade se adapta: se os frames ficam lentos, ele reduz a resolução e depois o fps. Sem WebGL, cai para o desenho em linha.
+- Efeitos escrevem estilos direto nos elementos (sem estado React por frame). O preenchimento dourado da frase de escala e a troca de imagens dos segmentos usam só `transform`, sem repintura do conteúdo.
+- `will-change` só nos elementos que se movem a cada frame. O header e a barra mobile usam fundo sólido em vez de blur, e a textura de grão fica desligada no celular.
+- Para medir desempenho use o build de produção (`npm run build && npm start`): o `npm run dev` é bem mais pesado.
 - Cenas fixas usam `position: sticky` + progresso do ScrollTrigger (sem pin-spacers).
 - Página pré-renderizada estática.
 

@@ -102,6 +102,7 @@ export const SOLUTIONS = {
   idealFor: "Ideal para",
   cta: "Pedir orçamento",
   hint: "Arraste para o lado",
+  hintDesktop: "Continue rolando ou arraste os cards",
 };
 
 export const SEGMENTS_COPY = {
@@ -296,6 +297,8 @@ export const FOOTER = {
   navTitle: "Navegação",
   contactTitle: "Contato",
   privacy: "Política de privacidade",
+  motionOff: "Reduzir animações",
+  motionOn: "Ativar animações",
   wordmark: "DIAMOND",
 };
 

@@ -4,11 +4,7 @@ import { LightFillText } from "@/components/motion/LightFillText";
 export function ScaleStatement() {
   return (
     <section className="sec lf" id="escala" data-theme="dark">
-      <LightFillText className="lf-t dx">
-        {SCALE.lines.map((line) => (
-          <span key={line}>{line}</span>
-        ))}
-      </LightFillText>
+      <LightFillText className="lf-t dx" lines={SCALE.lines} />
       <div className="wrap">
         <p className="lead">{SCALE.lead}</p>
       </div>

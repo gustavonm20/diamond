@@ -45,6 +45,7 @@ export function Solutions() {
                   data-cta={`service_${s.id}`}
                   data-section="solucoes"
                   aria-label={`${SOLUTIONS.cta}: ${s.title}`}
+                  draggable={false}
                 >
                   {SOLUTIONS.cta}
                   <Icon name="arrowRight" />
@@ -59,7 +60,8 @@ export function Solutions() {
           </div>
           <p className="swipe-hint" aria-hidden="true">
             <i />
-            {SOLUTIONS.hint}
+            <span className="hint-desk">{SOLUTIONS.hintDesktop}</span>
+            <span className="hint-mob">{SOLUTIONS.hint}</span>
           </p>
         </div>
       </div>

@@ -23,8 +23,8 @@ const SPY: Record<string, string[]> = {
 };
 
 /**
- * Header: transparent at top → blurred ink after 20px; hides on scroll down (after 0.6vh) and
- * returns on scroll up; switches to its light theme over light sections (ThemeWatcher), including
+ * Header: always fixed. Transparent at the top; past 40px it turns solid and compacts (76 → 60px)
+ * with an eased transition. Switches to its light theme over light sections (ThemeWatcher), including
  * the special "reveal" (p ≥ 0.6) and "cx" (p < 0.5) scenes. Gold ScrollProgress hairline underneath.
  */
 export function Header() {
@@ -32,7 +32,6 @@ export function Header() {
   const progRef = useRef<HTMLSpanElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const burgerRef = useRef<HTMLButtonElement>(null);
-  const menuOpenRef = useRef(false);
   const [open, setOpen] = useState(false);
   const lenis = useLenis();
 
@@ -66,18 +65,12 @@ export function Header() {
     measure();
     ScrollTrigger.addEventListener("refresh", measure);
 
-    let lastY = window.scrollY;
     let current = "";
 
     const unsub = subscribeScroll((s) => {
       const y = s.y;
-      hdr.classList.toggle("scrolled", y > 20);
-
-      if (!menuOpenRef.current) {
-        if (y > lastY + 1 && y > s.vh * 0.6) hdr.classList.add("hide");
-        else if (y < lastY - 1) hdr.classList.remove("hide");
-      }
-      lastY = y;
+      // Always visible: past 40px it turns solid and compacts (height, logo and CTA ease down).
+      hdr.classList.toggle("scrolled", y > 40);
 
       prog.style.transform = `scaleX(${clamp(y / s.max).toFixed(4)})`;
 
@@ -117,11 +110,9 @@ export function Header() {
 
   // Menu side effects: freeze scroll, mark header, close on Escape.
   useEffect(() => {
-    menuOpenRef.current = open;
     const hdr = hdrRef.current;
     hdr?.classList.toggle("menu", open);
     if (open) {
-      hdr?.classList.remove("hide");
       if (lenis) lenis.stop();
       else document.documentElement.style.overflow = "hidden";
     } else {

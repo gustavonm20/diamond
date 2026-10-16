@@ -37,10 +37,11 @@ export const metadata: Metadata = baseMetadata;
 export const viewport: Viewport = baseViewport;
 
 /**
- * Runs before first paint: enables JS-only styles, applies the `?motion=full|auto` override
- * (session-scoped) and skips the preloader on return visits or reduced motion.
+ * Runs before first paint: enables JS-only styles, resolves the motion mode (see lib/motion.ts)
+ * and skips the preloader on return visits or when motion is calmed down.
+ * `?motion=static` (or the footer toggle) persists the opt-out; `?motion=auto` clears it.
  */
-const BOOT = `(function(){var d=document.documentElement;d.classList.add('js');try{var q=new URLSearchParams(location.search).get('motion');if(q==='full')sessionStorage.setItem('dm-motion','full');if(q==='auto')sessionStorage.removeItem('dm-motion');var full=sessionStorage.getItem('dm-motion')==='full';if(full)d.setAttribute('data-motion','full');if(sessionStorage.getItem('dm-pre')||(!full&&matchMedia('(prefers-reduced-motion: reduce)').matches))d.setAttribute('data-pre','skip')}catch(e){}})();`;
+const BOOT = `(function(){var d=document.documentElement;d.classList.add('js');var m='full';try{var q=new URLSearchParams(location.search).get('motion');if(q==='static'||q==='reduce')localStorage.setItem('dm-motion','static');if(q==='auto'||q==='full')localStorage.removeItem('dm-motion');if(localStorage.getItem('dm-motion')==='static')m='static';else if(matchMedia('(prefers-reduced-motion: reduce)').matches)m='soft';if(m!=='full'||sessionStorage.getItem('dm-pre'))d.setAttribute('data-pre','skip')}catch(e){}d.setAttribute('data-motion',m)})();`;
 
 const jsonLd = JSON.stringify(buildJsonLd()).replace(/</g, "\\u003c");
 

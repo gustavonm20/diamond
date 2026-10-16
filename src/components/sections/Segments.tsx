@@ -20,9 +20,14 @@ export function Segments() {
                   <div
                     key={s.id}
                     data-seg-img
-                    style={i > 0 ? { clipPath: "inset(100% 0 0 0)" } : undefined}
+                    style={i > 0 ? { transform: "translate3d(0,100%,0)" } : undefined}
                   >
-                    <Scene scene={s.scene} />
+                    <div
+                      data-seg-inner
+                      style={i > 0 ? { transform: "translate3d(0,-100%,0)" } : undefined}
+                    >
+                      <Scene scene={s.scene} />
+                    </div>
                   </div>
                 ))}
               </div>

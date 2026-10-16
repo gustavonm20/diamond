@@ -4,6 +4,7 @@ import { showConfirmBadges } from "@/lib/env";
 import { waLinkProps } from "@/lib/whatsapp";
 import { ConfirmBadge } from "@/components/ui/ConfirmBadge";
 import { Icon } from "@/components/ui/Icon";
+import { MotionToggle } from "@/components/ui/MotionToggle";
 import { Year } from "@/components/ui/Year";
 import { FooterWordmark } from "@/components/motion/FooterWordmark";
 
@@ -57,7 +58,10 @@ export function Footer() {
               </>
             )}
           </span>
-          <a href="/politica-de-privacidade">{FOOTER.privacy}</a>
+          <span className="ft-links">
+            <MotionToggle />
+            <a href="/politica-de-privacidade">{FOOTER.privacy}</a>
+          </span>
         </div>
       </div>
     </FooterWordmark>

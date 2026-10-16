@@ -54,29 +54,41 @@ export function HeroMotion({ children, className, ...rest }: HTMLAttributes<HTML
         let ty = 0;
         let cx = 0;
         let cy = 0;
+        let ticking = false;
+        const tick = () => {
+          cx = lerp(cx, tx, 0.06);
+          cy = lerp(cy, ty, 0.06);
+          if (parallax)
+            parallax.style.transform = `translate3d(${cx.toFixed(2)}px,${cy.toFixed(2)}px,0)`;
+          // Stop the ticker once the layer has caught up with the cursor.
+          if (Math.abs(cx - tx) < 0.05 && Math.abs(cy - ty) < 0.05) {
+            gsap.ticker.remove(tick);
+            ticking = false;
+          }
+        };
+        const wake = () => {
+          if (ticking) return;
+          ticking = true;
+          gsap.ticker.add(tick);
+        };
         const onMove = (e: PointerEvent) => {
-          const r = root.getBoundingClientRect();
-          root.style.setProperty("--mx", `${e.clientX - r.left}px`);
-          root.style.setProperty("--my", `${e.clientY - r.top}px`);
+          // The hero sits at the top of the page, so page coordinates need no layout read.
+          root.style.setProperty("--mx", `${e.clientX}px`);
+          root.style.setProperty("--my", `${e.clientY + window.scrollY}px`);
           tx = (e.clientX / window.innerWidth - 0.5) * -28;
           ty = (e.clientY / window.innerHeight - 0.5) * -20;
+          wake();
         };
         const onEnter = () => root.classList.add("spot");
         const onLeave = () => {
           root.classList.remove("spot");
           tx = ty = 0;
-        };
-        const tick = () => {
-          cx = lerp(cx, tx, 0.06);
-          cy = lerp(cy, ty, 0.06);
-          if (parallax && (Math.abs(cx - tx) > 0.01 || Math.abs(cy - ty) > 0.01))
-            parallax.style.transform = `translate3d(${cx.toFixed(2)}px,${cy.toFixed(2)}px,0)`;
+          wake();
         };
         if (fine) {
           root.addEventListener("pointermove", onMove);
           root.addEventListener("pointerenter", onEnter);
           root.addEventListener("pointerleave", onLeave);
-          gsap.ticker.add(tick);
         }
 
         return () => {

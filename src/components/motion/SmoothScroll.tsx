@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { remeasureScroll } from "@/lib/scroll";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useMotionMode } from "@/hooks/useMotionMode";
 
 /** Keeps ScrollTrigger in sync with Lenis. */
 function LenisBridge() {
@@ -33,10 +33,10 @@ function useRefreshOnLoad() {
 
 /**
  * Lenis smooth scroll driven by gsap.ticker (lerp 0.1, autoRaf off, lagSmoothing 0).
- * Disabled entirely for prefers-reduced-motion.
+ * Only in "full" motion mode; "soft" and "static" keep native scrolling.
  */
 export function SmoothScroll() {
-  const reduce = useReducedMotion();
+  const reduce = useMotionMode() !== "full";
   const ref = useRef<LenisRef>(null);
   useRefreshOnLoad();
 

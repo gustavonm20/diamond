@@ -4,13 +4,17 @@ import { useEffect, useRef } from "react";
 import { buildDiamond } from "@/lib/diamond-geometry";
 import { heroState } from "@/lib/hero-state";
 import { onIgnite } from "@/lib/ignite";
-import { prefersReducedMotion } from "@/lib/motion";
+import { clamp, motionMode } from "@/lib/motion";
+import { getScroll, subscribeScroll } from "@/lib/scroll";
 
 /**
  * Hero centerpiece: a dark, faceted brilliant-cut stone rendered with raw WebGL (no 3D library).
  * ~80 triangles, two blended passes (inner facets, then outer facets), procedural "studio" reflections
- * in the brand golds and hairline facet edges. It starts unlit and ignites with the headline.
- * Renders only while on screen and the tab is visible. Reduced motion → one static, lit frame.
+ * in the brand golds and hairline facet edges. It starts unlit and ignites with the headline, then:
+ * spins and floats, a cream light band sweeps across the facets every few seconds, scroll speed
+ * spins it faster, hover brightens it, and it can be grabbed and spun (with inertia).
+ * Renders only while on screen and the tab is visible; resolution and frame rate adapt to slow devices.
+ * "static" motion mode → one lit frame (still draggable).
  */
 
 const VERT = `
@@ -47,6 +51,8 @@ uniform vec3 uCam;
 uniform float uIgnite;
 uniform float uEnv;
 uniform float uPass;
+uniform float uSweepA;
+uniform float uSweepI;
 
 const vec3 GOLD = vec3(0.784, 0.643, 0.365);
 const vec3 GOLD_HI = vec3(0.914, 0.804, 0.541);
@@ -65,6 +71,9 @@ vec3 env(vec3 r) {
   c += GOLD * ring * smoothstep(-0.6, 0.35, y) * 1.15;
   c += CREAM * pow(max(dot(r, normalize(KEY)), 0.0), 20.0) * 2.0;
   c += vec3(0.22, 0.16, 0.07) * (1.0 - smoothstep(-0.95, -0.2, y)) * 0.5;
+  // A narrow cream band that sweeps across the front every few seconds.
+  float band = smoothstep(0.965, 0.998, cos(a - uSweepA)) * smoothstep(-0.4, 0.5, y);
+  c += CREAM * band * uSweepI * 2.6;
   return c;
 }
 
@@ -220,6 +229,8 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     const uIgnite = u("uIgnite");
     const uEnv = u("uEnv");
     const uPass = u("uPass");
+    const uSweepA = u("uSweepA");
+    const uSweepI = u("uSweepI");
 
     gl.uniformMatrix4fv(
       uView,
@@ -232,14 +243,19 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     gl.enable(gl.CULL_FACE);
     gl.clearColor(0, 0, 0, 0);
 
-    const reduce = prefersReducedMotion();
+    const mode = motionMode();
+    const still = mode === "static";
+    const soft = mode === "soft";
+    const idleSpin = still ? 0 : soft ? 0.22 : 0.42;
+    const floatAmp = still ? 0 : soft ? 0.025 : 0.05;
     const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    const maxDpr = window.innerWidth < 768 ? 1.5 : 1.75;
+    const baseDpr = window.innerWidth < 768 ? 1.25 : 1.5;
+    let dprScale = 1;
 
     let width = 0;
     let height = 0;
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+      const dpr = Math.min(window.devicePixelRatio || 1, baseDpr) * dprScale;
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
       const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
       if (w === width && h === height) return;
@@ -251,16 +267,26 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     resize();
 
     // --- state ---
-    let ignitedAt = reduce ? -1e9 : Infinity;
+    let ignitedAt = still ? -1e9 : Infinity;
     let pointerX = 0;
     let pointerY = 0;
     let px = 0;
     let py = 0;
     let spin = 0.35;
+    let dragVel = 0;
+    let pitchDrag = 0;
+    let hover = 0;
+    let hoverTarget = 0;
+    let dragging = false;
     let last = performance.now();
     let raf = 0;
     let visible = true;
     let pageVisible = !document.hidden;
+    // Adaptive quality: sustained slow frames lower the resolution first, then the frame rate.
+    let frames = 0;
+    let frameAcc = 0;
+    let lastFrame = 0;
+    let minFrameMs = soft ? 30 : 0;
 
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -269,42 +295,47 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
 
       px += (pointerX - px) * 0.06;
       py += (pointerY - py) * 0.06;
-      const scroll = heroState.scroll;
-      if (!reduce) spin += dt * (0.16 + scroll * 0.9);
+      if (!still && !dragging) {
+        const scrollBoost = clamp(getScroll().vel * 0.03, -2.5, 2.5);
+        spin += dt * (idleSpin + heroState.scroll * 0.9 + scrollBoost + dragVel);
+      }
+      dragVel *= Math.exp(-dt * 1.8);
+      if (!dragging) pitchDrag *= Math.exp(-dt * 3);
+      hover += (hoverTarget - hover) * (1 - Math.exp(-dt * 6));
 
       const sinceIgnite = (now - ignitedAt) / 1000;
       let ign = 0;
       if (sinceIgnite > 0) {
         const ramp = 1 - Math.pow(1 - Math.min(1, sinceIgnite / 1.6), 3);
-        ign = ramp * flicker(sinceIgnite);
+        ign = ramp * (soft ? 1 : flicker(sinceIgnite));
       }
 
-      const R = mul3(rz(-0.1 + px * 0.08), mul3(rx(0.42 + py * 0.12), ry(spin + px * 0.35)));
-      const s = 1;
+      const wob = still ? 0 : Math.sin(t * 0.55) * 0.05;
+      const R = mul3(
+        rz(-0.1 + px * 0.08 + wob * 0.4),
+        mul3(rx(0.42 + py * 0.12 + wob + pitchDrag), ry(spin + px * 0.35)),
+      );
+      const s = 1 + hover * 0.04;
+      const bob = Math.sin(t * 0.9) * floatAmp;
+      // prettier-ignore
       const model = new Float32Array([
-        R[0] * s,
-        R[3] * s,
-        R[6] * s,
-        0,
-        R[1] * s,
-        R[4] * s,
-        R[7] * s,
-        0,
-        R[2] * s,
-        R[5] * s,
-        R[8] * s,
-        0,
-        0,
-        0,
-        0,
-        1,
+        R[0] * s, R[3] * s, R[6] * s, 0,
+        R[1] * s, R[4] * s, R[7] * s, 0,
+        R[2] * s, R[5] * s, R[8] * s, 0,
+        0, bob, 0, 1,
       ]);
       const normal = new Float32Array([R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]]);
 
+      // Light sweep: every 5.5s a band crosses the front during the first 40% of the cycle.
+      const phase = (t % 5.5) / 5.5;
+      const sweepOn = !still && phase < 0.4;
+
       gl.uniformMatrix4fv(uModel, false, model);
       gl.uniformMatrix3fv(uNorm, false, normal);
-      gl.uniform1f(uIgnite, ign);
-      gl.uniform1f(uEnv, (reduce ? 0.8 : t * 0.12) + px * 0.5);
+      gl.uniform1f(uIgnite, ign * (1 + hover * 0.25));
+      gl.uniform1f(uEnv, (still ? 0.8 : t * 0.12) + px * 0.5);
+      gl.uniform1f(uSweepA, 0.2 + (phase / 0.4) * 2.8);
+      gl.uniform1f(uSweepI, sweepOn ? Math.sin((phase / 0.4) * Math.PI) * ign : 0);
 
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.cullFace(gl.FRONT);
@@ -316,12 +347,28 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     };
 
     const loop = (now: number) => {
-      draw(now);
       raf = requestAnimationFrame(loop);
+      if (now - lastFrame < minFrameMs) return;
+      if (lastFrame) {
+        frameAcc += now - lastFrame;
+        if (++frames >= 90) {
+          const avg = frameAcc / frames;
+          if (avg > 22 && dprScale > 0.6) {
+            dprScale *= 0.8;
+            resize();
+          } else if (avg > 22 && !minFrameMs) {
+            minFrameMs = 30;
+          }
+          frames = frameAcc = 0;
+        }
+      }
+      lastFrame = now;
+      draw(now);
     };
     const start = () => {
-      if (reduce || raf || !visible || !pageVisible) return;
+      if (still || raf || !visible || !pageVisible) return;
       last = performance.now();
+      lastFrame = 0;
       raf = requestAnimationFrame(loop);
     };
     const stop = () => {
@@ -330,10 +377,13 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     };
 
     const offIgnite = onIgnite(() => {
-      // Reduced motion stays fully lit from the first frame (ignitedAt is already in the past).
-      if (reduce) draw(performance.now());
-      else ignitedAt = performance.now() + 350;
+      // Static mode stays fully lit from the first frame (ignitedAt is already in the past).
+      if (still) draw(performance.now());
+      else ignitedAt = performance.now() + (soft ? 0 : 350);
     });
+
+    // Scroll velocity feeds the spin; make sure the shared scroll reader is running.
+    const offScroll = subscribeScroll(() => {});
 
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
@@ -359,8 +409,53 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
       pointerX = (e.clientX / window.innerWidth) * 2 - 1;
       pointerY = (e.clientY / window.innerHeight) * 2 - 1;
     };
-    if (finePointer && !reduce)
-      window.addEventListener("pointermove", onPointer, { passive: true });
+    if (finePointer && !still) window.addEventListener("pointermove", onPointer, { passive: true });
+
+    // Grab and spin. Touch keeps vertical page scrolling (touch-action: pan-y in CSS).
+    let lastX = 0;
+    let lastY = 0;
+    let lastT = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      dragging = true;
+      dragVel = 0;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      lastT = performance.now();
+      canvas.setPointerCapture(e.pointerId);
+      canvas.classList.add("is-dragging");
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const now = performance.now();
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      const sec = Math.max(0.008, (now - lastT) / 1000);
+      spin += dx * 0.009;
+      pitchDrag = clamp(pitchDrag + dy * 0.004, -0.45, 0.45);
+      dragVel = clamp((dx * 0.009) / sec, -12, 12);
+      lastX = e.clientX;
+      lastY = e.clientY;
+      lastT = now;
+      if (still) draw(now);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (performance.now() - lastT > 80 || still) dragVel = 0;
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      canvas.classList.remove("is-dragging");
+    };
+    const onEnter = () => (hoverTarget = 1);
+    const onLeave = () => (hoverTarget = 0);
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    if (finePointer) {
+      canvas.addEventListener("pointerenter", onEnter);
+      canvas.addEventListener("pointerleave", onLeave);
+    }
 
     const onLost = (e: Event) => {
       e.preventDefault();
@@ -375,10 +470,17 @@ export function DiamondGL({ onReady }: { onReady?: (ok: boolean) => void }) {
     return () => {
       stop();
       offIgnite();
+      offScroll();
       io.disconnect();
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onPointer);
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointercancel", onUp);
+      canvas.removeEventListener("pointerenter", onEnter);
+      canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("webglcontextlost", onLost);
       gl.deleteBuffer(buf);
       gl.deleteProgram(prog);

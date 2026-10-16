@@ -16,35 +16,40 @@ export function mixHex(a: string, b: string, t: number) {
 }
 
 /**
- * Full motion can be forced with `?motion=full` (kept for the session, `?motion=auto` resets).
- * Useful for demos on machines where the OS turns animations off. The default always respects
- * prefers-reduced-motion. The boot script in layout.tsx sets <html data-motion="full">.
+ * Motion modes, set on <html data-motion> by the boot script in layout.tsx before first paint:
+ * - "full":   default.
+ * - "soft":   the OS asks for reduced motion. Effects stay, calmer: native scroll (no Lenis inertia),
+ *             no flicker flashes, slower loops, no preloader.
+ * - "static": explicit opt-out (footer "Reduzir animações" toggle or `?motion=static`): final states,
+ *             no animation, sticky scenes collapse to normal flow. `?motion=auto` clears the choice.
  */
-export const motionForced = () =>
-  typeof document !== "undefined" && document.documentElement.dataset.motion === "full";
+export type MotionMode = "full" | "soft" | "static";
 
-export const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  !motionForced() &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+export const motionMode = (): MotionMode => {
+  if (typeof document === "undefined") return "full";
+  const m = document.documentElement.dataset.motion;
+  return m === "soft" || m === "static" ? m : "full";
+};
 
-/** gsap.matchMedia buckets (brief §8.3). Getters, so the motion override is read at call time. */
+/** True only for the explicit "static" opt-out: render final states, animate nothing. */
+export const prefersReducedMotion = () => motionMode() === "static";
+
+/** OS-level reduced motion: keep effects but calmer. */
+export const isSoftMotion = () => motionMode() === "soft";
+
+/** gsap.matchMedia buckets (brief §8.3). Getters, so the mode is read at call time. */
 export const MQ = {
   get desktop() {
-    return motionForced()
-      ? "(min-width: 1024px)"
-      : "(min-width: 1024px) and (prefers-reduced-motion: no-preference)";
+    return prefersReducedMotion() ? "not all" : "(min-width: 1024px)";
   },
   get mobile() {
-    return motionForced()
-      ? "(max-width: 1023px)"
-      : "(max-width: 1023px) and (prefers-reduced-motion: no-preference)";
+    return prefersReducedMotion() ? "not all" : "(max-width: 1023px)";
   },
   get motion() {
-    return motionForced() ? "all" : "(prefers-reduced-motion: no-preference)";
+    return prefersReducedMotion() ? "not all" : "all";
   },
   get reduce() {
-    return motionForced() ? "not all" : "(prefers-reduced-motion: reduce)";
+    return prefersReducedMotion() ? "all" : "not all";
   },
 };
 

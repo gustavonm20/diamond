@@ -72,31 +72,26 @@
       border-color 0.4s;
   }
   .hdr.scrolled {
-    background: rgba(10, 10, 11, 0.72);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    background: rgba(10, 10, 11, 0.94);
     border-color: rgba(200, 164, 93, 0.15);
-  }
-  .hdr.hide {
-    transform: translateY(-100%);
+    box-shadow: 0 14px 34px -26px rgba(0, 0, 0, 0.9);
   }
   .hdr.onlight {
     color: var(--color-ink);
   }
   .hdr.onlight.scrolled {
-    background: rgba(244, 239, 230, 0.8);
+    background: rgba(244, 239, 230, 0.95);
     border-color: rgba(107, 80, 32, 0.18);
   }
   .hdr.menu {
     color: var(--color-cream) !important;
     background: transparent !important;
     border-color: transparent !important;
-    transform: none !important;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    box-shadow: none !important;
   }
   .hdr-in {
     height: var(--hdr);
+    transition: height 0.5s var(--ease);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -106,6 +101,25 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    transform-origin: left center;
+    transition: transform 0.5s var(--ease);
+  }
+  /* Compact state: 76 → 60px, logo and CTA ease down a notch. */
+  .hdr.scrolled .hdr-in {
+    height: 60px;
+  }
+  .hdr.scrolled .logo {
+    transform: scale(0.9);
+  }
+  .hdr .hdr-cta {
+    transition:
+      padding 0.5s var(--ease),
+      transform 0.5s var(--ease),
+      background-position 0.6s var(--ease),
+      box-shadow 0.5s var(--ease);
+  }
+  .hdr.scrolled .hdr-cta {
+    padding: 8px 14px;
   }
   .logo svg {
     width: 26px;
@@ -317,6 +331,29 @@
     width: min(42vw, 700px);
     aspect-ratio: 1;
   }
+  .hero-diamond::before {
+    content: "";
+    position: absolute;
+    inset: 16%;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgba(200, 164, 93, 0.14), transparent 72%);
+    opacity: 0;
+    transition: opacity 2s var(--ease) 0.8s;
+  }
+  .is-ignited .hero-diamond::before {
+    opacity: 1;
+    animation: halo 6s ease-in-out 2.8s infinite;
+  }
+  @keyframes halo {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
   .hero-diamond-inner {
     position: absolute;
     inset: 0;
@@ -327,6 +364,21 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: pan-y;
+  }
+  .hero-diamond canvas.is-dragging {
+    cursor: grabbing;
+  }
+  /* Let the stone receive the pointer through the empty part of the copy column. */
+  .hero-in,
+  .hero-copy {
+    pointer-events: none;
+  }
+  .hero-copy > * {
+    pointer-events: auto;
+    width: fit-content;
   }
   .facet {
     position: absolute;
@@ -349,7 +401,6 @@
     bottom: 0;
     height: 34vh;
     transform-origin: 50% 100%;
-    will-change: transform;
   }
   .hero-sky svg {
     width: 100%;
@@ -395,7 +446,6 @@
   .h1 .l {
     display: block;
     text-wrap: balance;
-    will-change: transform;
   }
   .w {
     color: #26262b;
@@ -418,6 +468,10 @@
   }
   .ign {
     animation: flicker 0.6s linear;
+  }
+  /* Soft motion (OS "reduce motion"): ignite without flashing. */
+  html[data-motion="soft"] .ign {
+    animation: none;
   }
   @keyframes flicker {
     0% {
@@ -642,7 +696,6 @@
     transform: rotateY(-12deg) rotateX(2deg);
     transform-origin: 30% 50%;
     box-shadow: 30px 40px 80px -40px rgba(0, 0, 0, 0.9);
-    will-change: transform;
   }
   @media (max-width: 900px) {
     .prob {
@@ -721,7 +774,6 @@
     position: absolute;
     inset: 0;
     clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
-    will-change: clip-path;
   }
   .dr-rim {
     background: var(--color-gold);
@@ -751,7 +803,6 @@
     opacity: 0;
     transform: scale(0.85);
     padding: 0 var(--pad);
-    will-change: transform, opacity;
   }
   .dr-ey {
     display: block;
@@ -819,7 +870,6 @@
   }
   .odo span {
     display: block;
-    will-change: transform;
   }
   .odo span i {
     display: block;
@@ -854,15 +904,21 @@
     flex-direction: column;
     justify-content: center;
     padding-top: var(--hdr);
+    perspective: 1600px;
   }
   .hs .h2 {
     margin-bottom: 32px;
   }
   .track {
+    position: relative;
     display: flex;
     gap: 20px;
     padding: 10px var(--pad) 24px;
     width: max-content;
+    transform-style: preserve-3d;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
     will-change: transform;
   }
   .card {
@@ -884,7 +940,6 @@
   }
   .card .media .scene {
     transform: scale(1.12);
-    will-change: transform;
   }
   .card .dim {
     position: absolute;
@@ -952,8 +1007,32 @@
     transform: scaleX(0);
     transform-origin: left;
   }
+  .track.is-dragging {
+    cursor: grabbing;
+  }
+  .track.is-dragging a {
+    pointer-events: none;
+  }
   .swipe-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--color-muted-light);
+  }
+  .swipe-hint i {
+    width: 28px;
+    height: 1px;
+    background: currentColor;
+  }
+  .hint-mob {
     display: none;
+  }
+  @media (min-width: 1024px) {
+    .track {
+      touch-action: pan-y;
+    }
   }
   @media (max-width: 1023px) {
     .hp {
@@ -974,37 +1053,28 @@
       scroll-snap-type: x mandatory;
       scroll-padding-inline: var(--pad);
       scrollbar-width: none;
-      transform: none !important;
+      perspective: 1100px;
+      transform-style: flat;
+      padding-block: 24px 32px;
     }
     .track::-webkit-scrollbar {
       display: none;
     }
     .card {
-      scroll-snap-align: start;
-      transform: none !important;
-      width: min(82vw, 370px);
+      scroll-snap-align: center;
+      width: min(78vw, 370px);
     }
     .card .dim {
-      opacity: 0 !important;
-    }
-    .card .hl {
-      transform: scaleX(1) !important;
+      opacity: 0;
     }
     .tbar {
       display: none;
     }
-    .swipe-hint {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--color-muted-light);
+    .hint-desk {
+      display: none;
     }
-    .swipe-hint i {
-      width: 28px;
-      height: 1px;
-      background: currentColor;
+    .hint-mob {
+      display: inline;
     }
   }
 
@@ -1031,7 +1101,11 @@
   .seg-imgs > div {
     position: absolute;
     inset: 0;
-    will-change: clip-path;
+    overflow: hidden;
+  }
+  .seg-imgs [data-seg-inner] {
+    position: absolute;
+    inset: 0;
   }
   .seg-cnt {
     display: flex;
@@ -1121,13 +1195,11 @@
     inset: 0;
     clip-path: inset(14% 22% round 24px);
     background: var(--color-ink);
-    will-change: clip-path;
   }
   .cx-media {
     position: absolute;
     inset: 0;
     transform: scale(1.18);
-    will-change: transform;
   }
   .cx-shade {
     position: absolute;
@@ -1146,7 +1218,6 @@
     color: transparent;
     -webkit-text-stroke: 1px rgba(244, 239, 230, 0.55);
     transform: translate3d(0, -50%, 0);
-    will-change: transform;
   }
   .cx-cap {
     position: absolute;
@@ -1206,7 +1277,6 @@
   }
   .ba-lit {
     clip-path: inset(0 100% 0 0);
-    will-change: clip-path;
   }
   .ba-line {
     position: absolute;
@@ -1216,7 +1286,6 @@
     width: 1px;
     background: var(--color-gold-hi);
     box-shadow: 0 0 12px rgba(233, 205, 138, 0.8);
-    will-change: transform;
   }
   .ba-lab {
     position: absolute;
@@ -1279,6 +1348,7 @@
     border-top: 1px solid var(--color-line-2);
   }
   .lf-t {
+    position: relative;
     font-size: clamp(3rem, 10.5vw, 12rem);
     line-height: 1;
     white-space: nowrap;
@@ -1286,15 +1356,34 @@
     width: max-content;
     color: transparent;
     -webkit-text-stroke: 1px var(--color-gold-lo);
-    background: linear-gradient(90deg, var(--color-gold-hi) 0 50%, transparent 50% 100%);
-    background-size: 200% 100%;
-    background-position: 100% 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    will-change: transform, background-position;
   }
-  .lf-t span {
+  .lf-line {
     display: block;
+  }
+  .lf-fill {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    transform: translate3d(-100%, 0, 0);
+  }
+  .lf-fill::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    bottom: 6%;
+    right: 0;
+    width: 2px;
+    background: var(--color-gold-hi);
+    box-shadow: 0 0 18px 2px rgba(233, 205, 138, 0.55);
+    opacity: var(--edge, 0);
+    transition: opacity 0.4s;
+  }
+  .lf-fill-in {
+    display: block;
+    padding: 0 var(--pad);
+    color: var(--color-gold-hi);
+    -webkit-text-stroke: 1px var(--color-gold-hi);
+    transform: translate3d(100%, 0, 0);
   }
   .lf .lead {
     margin-top: 36px;
@@ -1328,7 +1417,6 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    will-change: transform;
   }
   .wt {
     aspect-ratio: 16 / 11;
@@ -1547,7 +1635,6 @@
     box-shadow: 0 0 12px rgba(233, 205, 138, 0.6);
     transform: scaleY(0);
     transform-origin: top;
-    will-change: transform;
   }
   .step {
     position: relative;
@@ -2158,7 +2245,6 @@
     margin-top: 64px;
     letter-spacing: -0.02em;
     transform: translateY(40%);
-    will-change: transform;
   }
   .ft-bot {
     position: relative;
@@ -2171,6 +2257,23 @@
     font-size: 12px;
     color: #6f6b64;
     border-top: 1px solid var(--color-line-2);
+  }
+  .ft-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .motion-toggle {
+    font-size: 12px;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.3s;
+  }
+  .motion-toggle:hover,
+  .ft-bot a:hover {
+    color: var(--color-cream);
   }
   @media (max-width: 900px) {
     .ft-top {
@@ -2234,9 +2337,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-      background: rgba(10, 10, 11, 0.9);
-      -webkit-backdrop-filter: blur(10px);
-      backdrop-filter: blur(10px);
+      background: rgba(10, 10, 11, 0.96);
       border-top: 1px solid rgba(200, 164, 93, 0.2);
       transform: translateY(110%);
       transition: transform 0.5s var(--ease);
@@ -2275,57 +2376,64 @@
   }
 
   /* =========================================================
-     Reduced motion: final states, normal flow.
-     Skipped when full motion is forced with ?motion=full (html[data-motion="full"]).
+     Static motion mode (explicit opt-out: footer toggle or ?motion=static):
+     final states, no animation, sticky scenes in normal flow.
+     OS-level "reduce motion" uses the calmer "soft" mode instead (see lib/motion.ts).
      ========================================================= */
-  @media (prefers-reduced-motion: reduce) {
-    html:not([data-motion="full"]) *,
-    html:not([data-motion="full"]) *::before,
-    html:not([data-motion="full"]) *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-    html:not([data-motion="full"]) .pin {
-      height: auto !important;
-    }
-    html:not([data-motion="full"]) .pin .stage {
-      position: relative;
-      height: auto;
-      min-height: 100svh;
-      padding: var(--sec) 0;
-    }
-    html:not([data-motion="full"]) .hp {
-      height: auto !important;
-    }
-    html:not([data-motion="full"]) .hp .stage {
-      position: relative;
-      height: auto;
-    }
-    html:not([data-motion="full"]) .track {
-      width: auto;
-      overflow-x: auto;
-      transform: none !important;
-    }
-    html:not([data-motion="full"]) .card {
-      transform: none !important;
-    }
-    html:not([data-motion="full"]) .card .dim {
-      opacity: 0 !important;
-    }
-    html:not([data-motion="full"]) .card .hl {
-      transform: scaleX(1) !important;
-    }
-    html.js:not([data-motion="full"]) .rv,
-    html.js:not([data-motion="full"]) .hero [data-enter] {
-      opacity: 1;
-      transform: none;
-    }
-    html:not([data-motion="full"]) .spark,
-    html:not([data-motion="full"]) .dr-cue,
-    html:not([data-motion="full"]) .cue {
-      display: none;
-    }
+  html[data-motion="static"] *,
+  html[data-motion="static"] *::before,
+  html[data-motion="static"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html[data-motion="static"] .pin {
+    height: auto !important;
+  }
+  html[data-motion="static"] .pin .stage {
+    position: relative;
+    height: auto;
+    min-height: 100svh;
+    padding: var(--sec) 0;
+  }
+  html[data-motion="static"] .hp {
+    height: auto !important;
+  }
+  html[data-motion="static"] .hp .stage {
+    position: relative;
+    height: auto;
+    padding-bottom: var(--sec);
+  }
+  html[data-motion="static"] .track {
+    width: auto;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--pad);
+    scrollbar-width: none;
+    transform: none !important;
+  }
+  html[data-motion="static"] .card {
+    scroll-snap-align: center;
+    transform: none !important;
+  }
+  html[data-motion="static"] .card .dim {
+    opacity: 0 !important;
+  }
+  html[data-motion="static"] .card .hl {
+    transform: scaleX(1) !important;
+  }
+  html[data-motion="static"] .tbar {
+    display: none;
+  }
+  html.js[data-motion="static"] .rv,
+  html.js[data-motion="static"] .hero [data-enter] {
+    opacity: 1;
+    transform: none;
+  }
+  html[data-motion="static"] .spark,
+  html[data-motion="static"] .dr-cue,
+  html[data-motion="static"] .cue {
+    display: none;
   }
 }
